@@ -1,5 +1,7 @@
 package serenetweaks.proxy;
 
+import net.minecraftforge.common.MinecraftForge;
+import serenetweaks.handlers.SnowRecalculationHandler;
 
 public class CommonProxy {
 	
@@ -9,7 +11,7 @@ public class CommonProxy {
 	}
 	
 	public void registerEventListeners(){
-		
+		MinecraftForge.EVENT_BUS.register(new SnowRecalculationHandler());
 	}
 	
 	public void registerPostEventListeners(){

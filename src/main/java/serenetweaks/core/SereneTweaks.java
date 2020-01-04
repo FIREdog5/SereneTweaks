@@ -11,7 +11,7 @@ import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import serenetweaks.proxy.CommonProxy;
 
-@Mod(modid = SereneTweaks.MODID, name = SereneTweaks.NAME, version = SereneTweaks.VERSION, acceptedMinecraftVersions = SereneTweaks.MC_VERSION, dependencies = "required-after:sereneseasons@[1.2.18")
+@Mod(modid = SereneTweaks.MODID, name = SereneTweaks.NAME, version = SereneTweaks.VERSION, acceptedMinecraftVersions = SereneTweaks.MC_VERSION, dependencies = "required-after:sereneseasons@1.2.18")
 public class SereneTweaks {
 
 	public static final String MODID = "serenetweaks";
@@ -21,7 +21,7 @@ public class SereneTweaks {
 
 	public static final Logger LOGGER = LogManager.getLogger(SereneTweaks.MODID);
 	
-	@SidedProxy(clientSide = "am2tinkerer.proxy.ClientProxy", serverSide = "am2tinkerer.proxy.CommonProxy")
+	@SidedProxy(clientSide = "serenetweaks.proxy.ClientProxy", serverSide = "serenetweaks.proxy.CommonProxy")
 	public static CommonProxy proxy;
 
 	@EventHandler
