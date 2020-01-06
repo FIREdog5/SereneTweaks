@@ -16,9 +16,10 @@ import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 import net.minecraftforge.fml.common.gameevent.TickEvent.Type;
 import net.minecraftforge.fml.relauncher.Side;
 import sereneseasons.api.season.BiomeHooks;
-import sereneseasons.api.season.ISeasonState;
 import sereneseasons.api.season.Season.SubSeason;
 import sereneseasons.api.season.SeasonHelper;
+import serenetweaks.config.ModOptions;
+import serenetweaks.data.TimeStampsWorldSavedData;
 
 public class SnowRecalculationHandler {
 	
@@ -44,13 +45,11 @@ public class SnowRecalculationHandler {
 		}
 		int i = 0;
 		int c = 0;
-		ISeasonState seasonState = SeasonHelper.getSeasonState(world);
 		while (recalculationQueue.size() > i && c < 20) {
 			Chunk chunk = recalculationQueue.get(i);
 			if (chunk.isLoaded() && chunk.isPopulated()) {
 				BlockPos pos = new BlockPos(chunk.x*16, 0, chunk.z*16);
 				for (int k2 = 0; k2 < 16; ++k2) {
-					individual:
 		            for (int j3 = 0; j3 < 16; ++j3) {
 		                BlockPos blockpos1 = chunk.getPrecipitationHeight(pos.add(k2, 0, j3));
 		                BlockPos blockpos2 = blockpos1.down();
@@ -84,6 +83,9 @@ public class SnowRecalculationHandler {
 	
 	@SubscribeEvent
 	public void onChunkLoaded(ChunkEvent.Load event) {
+		if(!ModOptions.Settings.shouldRecalculateSnow) {
+			return;
+		}
 		World world = event.getWorld();
 		if (world.isRemote) {
 			return;
@@ -92,10 +94,18 @@ public class SnowRecalculationHandler {
 		if (world.provider.getDimension() != 0) {
 			return;
 		}
-		recalculationQueue.add(chunk);
+		int currentTime = (int) System.currentTimeMillis()/1000/60;
+		int savedTime = TimeStampsWorldSavedData.getChunkTimeStamp(chunk);
+		if (currentTime - savedTime > ModOptions.Settings.timeToRecalculateSnow) {
+			recalculationQueue.add(chunk);
+		}
 	}
 	
+	@SubscribeEvent
 	public void playerJoinedWorld(PlayerEvent.PlayerLoggedInEvent event) {
+		if(!ModOptions.Settings.shouldRecalculateSnow) {
+			return;
+		}
 		EntityPlayer player = event.player;
 		World world = player.world;
 		if (world.provider.getDimension() != 0) {
@@ -107,7 +117,44 @@ public class SnowRecalculationHandler {
 		for (int i = -5; i < 5; i++) {
 			for (int j = -5; j < 5; j++) {
 				Chunk chunk = world.getChunk(((int)player.posX/16) + i, ((int)player.posZ/16) + j);
-				recalculationQueue.add(chunk);
+				int currentTime = (int) System.currentTimeMillis()/1000/60;
+				int savedTime = TimeStampsWorldSavedData.getChunkTimeStamp(chunk);
+				if (currentTime - savedTime > ModOptions.Settings.timeToRecalculateSnow) {
+					recalculationQueue.add(chunk);
+				}
+			}
+		}
+	}
+	
+	@SubscribeEvent
+	public void onChunkUnLoaded(ChunkEvent.Unload event) {
+		World world = event.getWorld();
+		if (world.isRemote) {
+			return;
+		}
+		Chunk chunk = event.getChunk();
+		if (world.provider.getDimension() != 0) {
+			return;
+		}
+		int currentTime = (int) System.currentTimeMillis()/1000/60;
+		TimeStampsWorldSavedData.setChunkTimeStamp(chunk, currentTime);
+	}
+	
+	@SubscribeEvent
+	public void playerLeftWorld(PlayerEvent.PlayerLoggedOutEvent event) {
+		EntityPlayer player = event.player;
+		World world = player.world;
+		if (world.provider.getDimension() != 0) {
+			return;
+		}
+		if (world.isRemote) {
+			return;
+		}
+		int currentTime = (int) System.currentTimeMillis()/1000/60;		
+		for (int i = -5; i < 5; i++) {
+			for (int j = -5; j < 5; j++) {
+				Chunk chunk = world.getChunk(((int)player.posX/16) + i, ((int)player.posZ/16) + j);
+				TimeStampsWorldSavedData.setChunkTimeStamp(chunk, currentTime);
 			}
 		}
 	}

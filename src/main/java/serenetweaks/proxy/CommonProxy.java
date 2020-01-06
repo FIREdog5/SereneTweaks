@@ -1,7 +1,6 @@
 package serenetweaks.proxy;
 
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.common.FMLCommonHandler;
 import serenetweaks.handlers.SnowRecalculationHandler;
 
 public class CommonProxy {
