@@ -2,19 +2,23 @@ package serenetweaks.handlers;
 
 import java.util.ArrayList;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.event.world.ChunkEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent.Phase;
 import net.minecraftforge.fml.common.gameevent.TickEvent.Type;
 import net.minecraftforge.fml.relauncher.Side;
+import sereneseasons.api.season.BiomeHooks;
 import sereneseasons.api.season.ISeasonState;
+import sereneseasons.api.season.Season.SubSeason;
 import sereneseasons.api.season.SeasonHelper;
-import sereneseasons.api.season.WorldHooks;
 
 public class SnowRecalculationHandler {
 	
@@ -26,60 +30,98 @@ public class SnowRecalculationHandler {
 		Side side = event.side;
 		Phase phase = event.phase;
 		World world = event.world;
+		if (world.provider.getDimension() != 0) {
+			return;
+		}
 		if (!(type == Type.WORLD && side == Side.SERVER)) {
+			return;
+		}
+		if (world.isRemote) {
 			return;
 		}
 		if (recalculationQueue.size() == 0) {
 			return;
 		}
 		int i = 0;
-		while (recalculationQueue.size() > i && !recalculationQueue.get(i).isLoaded()) {
-			i++;
-		}
-		if (recalculationQueue.size() <= i) {
-			return;
-		}
-		Chunk chunk = recalculationQueue.get(i);
-		if (!chunk.isLoaded()) {
-			return;
-		}
-		recalculationQueue.remove(i);
+		int c = 0;
 		ISeasonState seasonState = SeasonHelper.getSeasonState(world);
-		BlockPos pos = new BlockPos(chunk.x*16, 0, chunk.z*16);
-		//BlockPos snowPos = chunk.getPrecipitationHeight(pos);
-		//world.setBlockState(snowPos, Blocks.ICE.getDefaultState(), 2);
-		
-		for (int k2 = 0; k2 < 16; ++k2)
-        {
-            for (int j3 = 0; j3 < 16; ++j3)
-            {
-                BlockPos blockpos1 = chunk.getPrecipitationHeight(pos.add(k2, 0, j3));
-                BlockPos blockpos2 = blockpos1.down();
-
-                if (world.canBlockFreezeWater(blockpos2))
-//                if (WorldHooks.canBlockFreezeInSeason(world, blockpos2, false, seasonState))
-                {
-                    world.setBlockState(blockpos2, Blocks.ICE.getDefaultState(), 2);
-                }
-
-                if (world.canSnowAt(blockpos1, true))
-//                if (WorldHooks.canSnowAtInSeason(world, blockpos1, false, seasonState))
-                {
-                    world.setBlockState(blockpos1, Blocks.SNOW_LAYER.getDefaultState(), 2);
-                }
-            }
-        }
+		while (recalculationQueue.size() > i && c < 20) {
+			Chunk chunk = recalculationQueue.get(i);
+			if (chunk.isLoaded() && chunk.isPopulated()) {
+				BlockPos pos = new BlockPos(chunk.x*16, 0, chunk.z*16);
+				for (int k2 = 0; k2 < 16; ++k2) {
+					individual:
+		            for (int j3 = 0; j3 < 16; ++j3) {
+		                BlockPos blockpos1 = chunk.getPrecipitationHeight(pos.add(k2, 0, j3));
+		                BlockPos blockpos2 = blockpos1.down();
+	
+		                if (world.canBlockFreezeWater(blockpos2)) {
+		                    world.setBlockState(blockpos2, Blocks.ICE.getDefaultState(), 2);
+		                }
+	
+		                if (world.canSnowAt(blockpos1, true)) {
+		                    world.setBlockState(blockpos1, Blocks.SNOW_LAYER.getDefaultState(), 2);
+		                }
+		                
+		                if (shouldMelt(world, blockpos2)) {
+		                	if (world.getBlockState(blockpos2).getBlock() == Blocks.ICE) {
+		                		world.setBlockState(blockpos2, Blocks.WATER.getDefaultState(), 2);
+		                	}
+		                	if (world.getBlockState(blockpos1).getBlock() == Blocks.SNOW_LAYER) {
+		                		world.setBlockState(blockpos1, Blocks.AIR.getDefaultState(), 2);
+		                	}
+		                }
+		            }
+		        }
+				recalculationQueue.remove(i);
+				c++;
+			} else {
+				i++;
+			}
+		}
 		
 	}
 	
 	@SubscribeEvent
 	public void onChunkLoaded(ChunkEvent.Load event) {
 		World world = event.getWorld();
+		if (world.isRemote) {
+			return;
+		}
 		Chunk chunk = event.getChunk();
+		if (world.provider.getDimension() != 0) {
+			return;
+		}
 		recalculationQueue.add(chunk);
-		System.out.println(chunk.isLoaded());
 	}
 	
+	public void playerJoinedWorld(PlayerEvent.PlayerLoggedInEvent event) {
+		EntityPlayer player = event.player;
+		World world = player.world;
+		if (world.provider.getDimension() != 0) {
+			return;
+		}
+		if (world.isRemote) {
+			return;
+		}
+		for (int i = -5; i < 5; i++) {
+			for (int j = -5; j < 5; j++) {
+				Chunk chunk = world.getChunk(((int)player.posX/16) + i, ((int)player.posZ/16) + j);
+				recalculationQueue.add(chunk);
+			}
+		}
+	}
 	
+	private boolean shouldMelt(World world, BlockPos pos) {
+		Biome biome = world.getBiome(pos);
+        SubSeason subSeason = SeasonHelper.getSeasonState(world).getSubSeason();
+        float f = BiomeHooks.getFloatTemperature(subSeason, biome, pos);
+        
+		if (f >= 0.15F)
+        {
+            return true;
+        }
+		return false;
+	}
 	
 }
