@@ -48,6 +48,7 @@ public class SnowRecalculationHandler {
 		while (recalculationQueue.size() > i && c < 20) {
 			Chunk chunk = recalculationQueue.get(i);
 			if (chunk.isLoaded() && chunk.isPopulated()) {
+				boolean success = true;
 				BlockPos pos = new BlockPos(chunk.x*16, 0, chunk.z*16);
 				for (int k2 = 0; k2 < 16; ++k2) {
 		            for (int j3 = 0; j3 < 16; ++j3) {
@@ -55,25 +56,29 @@ public class SnowRecalculationHandler {
 		                BlockPos blockpos2 = blockpos1.down();
 	
 		                if (world.canBlockFreezeWater(blockpos2)) {
-		                    world.setBlockState(blockpos2, Blocks.ICE.getDefaultState(), 2);
+		                	success = success && world.setBlockState(blockpos2, Blocks.ICE.getDefaultState(), 2);
 		                }
 	
 		                if (world.canSnowAt(blockpos1, true)) {
-		                    world.setBlockState(blockpos1, Blocks.SNOW_LAYER.getDefaultState(), 2);
+		                	success = success && world.setBlockState(blockpos1, Blocks.SNOW_LAYER.getDefaultState(), 2);
 		                }
 		                
 		                if (shouldMelt(world, blockpos2)) {
 		                	if (world.getBlockState(blockpos2).getBlock() == Blocks.ICE) {
-		                		world.setBlockState(blockpos2, Blocks.WATER.getDefaultState(), 2);
+		                		success = success && world.setBlockState(blockpos2, Blocks.WATER.getDefaultState(), 2);
 		                	}
 		                	if (world.getBlockState(blockpos1).getBlock() == Blocks.SNOW_LAYER) {
-		                		world.setBlockState(blockpos1, Blocks.AIR.getDefaultState(), 2);
+		                		success = success && world.setBlockState(blockpos1, Blocks.AIR.getDefaultState(), 2);
 		                	}
 		                }
 		            }
 		        }
-				recalculationQueue.remove(i);
-				c++;
+				if (success) {
+					recalculationQueue.remove(i);
+					c++;
+				} else {
+					i++;
+				}
 			} else {
 				i++;
 			}
@@ -94,7 +99,7 @@ public class SnowRecalculationHandler {
 		if (world.provider.getDimension() != 0) {
 			return;
 		}
-		int currentTime = (int) System.currentTimeMillis()/1000/60;
+		int currentTime = (int) (System.currentTimeMillis()/1000/60);
 		int savedTime = TimeStampsWorldSavedData.getChunkTimeStamp(chunk);
 		if (currentTime - savedTime > ModOptions.Settings.timeToRecalculateSnow) {
 			recalculationQueue.add(chunk);
@@ -117,7 +122,7 @@ public class SnowRecalculationHandler {
 		for (int i = -5; i < 5; i++) {
 			for (int j = -5; j < 5; j++) {
 				Chunk chunk = world.getChunk(((int)player.posX/16) + i, ((int)player.posZ/16) + j);
-				int currentTime = (int) System.currentTimeMillis()/1000/60;
+				int currentTime = (int) (System.currentTimeMillis()/1000/60);
 				int savedTime = TimeStampsWorldSavedData.getChunkTimeStamp(chunk);
 				if (currentTime - savedTime > ModOptions.Settings.timeToRecalculateSnow) {
 					recalculationQueue.add(chunk);
@@ -136,8 +141,10 @@ public class SnowRecalculationHandler {
 		if (world.provider.getDimension() != 0) {
 			return;
 		}
-		int currentTime = (int) System.currentTimeMillis()/1000/60;
-		TimeStampsWorldSavedData.setChunkTimeStamp(chunk, currentTime);
+		if(!removeFromRecalculationQueue(chunk)) {
+			int currentTime = (int) (System.currentTimeMillis()/1000/60);
+			TimeStampsWorldSavedData.setChunkTimeStamp(chunk, currentTime);
+		}
 	}
 	
 	@SubscribeEvent
@@ -150,11 +157,13 @@ public class SnowRecalculationHandler {
 		if (world.isRemote) {
 			return;
 		}
-		int currentTime = (int) System.currentTimeMillis()/1000/60;		
+		int currentTime = (int) (System.currentTimeMillis()/1000/60);		
 		for (int i = -5; i < 5; i++) {
 			for (int j = -5; j < 5; j++) {
 				Chunk chunk = world.getChunk(((int)player.posX/16) + i, ((int)player.posZ/16) + j);
-				TimeStampsWorldSavedData.setChunkTimeStamp(chunk, currentTime);
+				if(!removeFromRecalculationQueue(chunk)) {
+					TimeStampsWorldSavedData.setChunkTimeStamp(chunk, currentTime);
+				}
 			}
 		}
 	}
@@ -170,5 +179,17 @@ public class SnowRecalculationHandler {
         }
 		return false;
 	}
+	
+	private boolean removeFromRecalculationQueue(Chunk chunk) {
+		for (int i = 0; i < recalculationQueue.size(); i++) {
+			Chunk queueChunk = recalculationQueue.get(i);
+			if (chunk.getPos().x == queueChunk.getPos().x && chunk.getPos().z == queueChunk.getPos().z) {
+				recalculationQueue.remove(i);
+				i--;
+				return true;
+			}
+		}
+		return false;
+	};
 	
 }

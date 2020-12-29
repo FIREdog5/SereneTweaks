@@ -1,16 +1,13 @@
 [
 {
-  "modid": "examplemod",
-  "name": "Example Mod",
-  "description": "Example placeholder mod.",
+  "modid": "serenetweaks",
+  "name": "Serene Tweaks",
+  "description": "Many seasonal features planned! Currently will simulate the changing of seasons in chunks where the player has not been for the last (default 20) minutes.",
   "version": "${version}",
   "mcversion": "${mcversion}",
-  "url": "",
-  "updateUrl": "",
-  "authorList": ["ExampleDude"],
-  "credits": "The Forge and FML guys, for making this example",
-  "logoFile": "",
-  "screenshots": [],
-  "dependencies": []
+  "authorList": ["FIREdog5"],
+  "credits": "Adubbz and Forstride for creating Serene Seasons and its API.",
+  "logoFile": "assets/serenetweaks/textures/gui/logo.png",
+  "dependencies": ["sereneseasons"]
 }
 ]

@@ -67,7 +67,6 @@ public class TimeStampsWorldSavedData extends WorldSavedData{
 	}
 	
 	public static TimeStampsWorldSavedData get(World world) {
-		  // The IS_GLOBAL constant is there for clarity, and should be simplified into the right branch.
 		  MapStorage storage = world.getPerWorldStorage();
 		  TimeStampsWorldSavedData instance = (TimeStampsWorldSavedData) storage.getOrLoadData(TimeStampsWorldSavedData.class, DATA_NAME);
 
